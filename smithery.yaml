@@ -1,0 +1,57 @@
+# Smithery configuration file
+# https://smithery.ai/docs/config
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - implyOrganization
+      - implyRegion
+      - implyProjectId
+      - implyApiKey
+    properties:
+      implyOrganization:
+        type: string
+        title: "Imply Organization"
+        description: "Your Imply Cloud organization name"
+      implyRegion:
+        type: string
+        title: "Region"
+        description: "Imply Cloud region (e.g., us-east-1)"
+        default: "us-east-1"
+      implyCloudProvider:
+        type: string
+        title: "Cloud Provider"
+        description: "Cloud provider (aws, gcp, azure)"
+        default: "aws"
+        enum:
+          - aws
+          - gcp
+          - azure
+      implyProjectId:
+        type: string
+        title: "Project ID"
+        description: "Your Imply project ID"
+      implyApiKey:
+        type: string
+        title: "API Key"
+        description: "Your Imply API key"
+  commandFunction: |-
+    (config) => ({
+      command: 'uvx',
+      args: ['imply-druid-mcp'],
+      env: {
+        IMPLY_ORGANIZATION: config.implyOrganization,
+        IMPLY_REGION: config.implyRegion,
+        IMPLY_CLOUD_PROVIDER: config.implyCloudProvider || 'aws',
+        IMPLY_PROJECT_ID: config.implyProjectId,
+        IMPLY_API_KEY: config.implyApiKey
+      }
+    })
+  exampleConfig:
+    implyOrganization: "my-org"
+    implyRegion: "us-east-1"
+    implyCloudProvider: "aws"
+    implyProjectId: "my-project-id"
+    implyApiKey: "your-api-key-here"
