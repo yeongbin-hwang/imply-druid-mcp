@@ -3,6 +3,7 @@
 import httpx
 from typing import Any, Optional
 from .config import ImplyConfig
+from .utils import validate_path_param
 
 
 class ImplyClient:
@@ -29,7 +30,7 @@ class ImplyClient:
             base_url=self.base_url,
             headers=self.headers,
             timeout=httpx.Timeout(60.0),  # 60 second timeout
-            follow_redirects=True,
+            follow_redirects=False,  # Disabled to prevent credential leak on redirect
         )
         return self
 
@@ -81,8 +82,9 @@ class ImplyClient:
         Returns:
             Query results
         """
+        validated_id = validate_path_param(query_id, "query_id")
         response = await self.client.get(
-            f"/v1/projects/{self.project_id}/query/sql/statements/{query_id}/results"
+            f"/v1/projects/{self.project_id}/query/sql/statements/{validated_id}/results"
         )
         response.raise_for_status()
         return response.json()
@@ -96,8 +98,9 @@ class ImplyClient:
         Returns:
             Query status information
         """
+        validated_id = validate_path_param(query_id, "query_id")
         response = await self.client.get(
-            f"/v1/projects/{self.project_id}/query/sql/statements/{query_id}"
+            f"/v1/projects/{self.project_id}/query/sql/statements/{validated_id}"
         )
         response.raise_for_status()
         return response.json()
@@ -111,8 +114,9 @@ class ImplyClient:
         Returns:
             Cancellation confirmation
         """
+        validated_id = validate_path_param(query_id, "query_id")
         response = await self.client.delete(
-            f"/v1/projects/{self.project_id}/query/sql/statements/{query_id}"
+            f"/v1/projects/{self.project_id}/query/sql/statements/{validated_id}"
         )
         response.raise_for_status()
         return response.json() if response.content else {"status": "cancelled"}
@@ -138,6 +142,92 @@ class ImplyClient:
         Returns:
             Table details including schema
         """
-        response = await self.client.get(f"/v1/projects/{self.project_id}/tables/{table_name}")
+        validated_name = validate_path_param(table_name, "table_name")
+        response = await self.client.get(f"/v1/projects/{self.project_id}/tables/{validated_name}")
+        response.raise_for_status()
+        return response.json()
+
+    # Dashboard Operations
+
+    async def list_dashboards(self) -> dict[str, Any]:
+        """List all dashboards in the project.
+
+        Returns:
+            List of dashboards with metadata
+        """
+        response = await self.client.get(f"/v1/projects/{self.project_id}/dashboards")
+        response.raise_for_status()
+        return response.json()
+
+    async def get_dashboard(self, dashboard_id: str) -> dict[str, Any]:
+        """Get details about a specific dashboard.
+
+        Args:
+            dashboard_id: ID of the dashboard
+
+        Returns:
+            Dashboard details including configuration
+        """
+        validated_id = validate_path_param(dashboard_id, "dashboard_id")
+        response = await self.client.get(
+            f"/v1/projects/{self.project_id}/dashboards/{validated_id}"
+        )
+        response.raise_for_status()
+        return response.json()
+
+    # Data Cube Operations
+
+    async def list_data_cubes(self) -> dict[str, Any]:
+        """List all data cubes in the project.
+
+        Returns:
+            List of data cubes with metadata
+        """
+        response = await self.client.get(f"/v1/projects/{self.project_id}/data-cubes")
+        response.raise_for_status()
+        return response.json()
+
+    async def get_data_cube(self, cube_id: str) -> dict[str, Any]:
+        """Get details about a specific data cube.
+
+        Args:
+            cube_id: ID of the data cube
+
+        Returns:
+            Data cube details including dimensions and measures
+        """
+        validated_id = validate_path_param(cube_id, "cube_id")
+        response = await self.client.get(
+            f"/v1/projects/{self.project_id}/data-cubes/{validated_id}"
+        )
+        response.raise_for_status()
+        return response.json()
+
+    # Pivot Query Operations (v0 API)
+
+    async def query_data_cube(
+        self, query_string: str, exact_results_only: bool = False
+    ) -> dict[str, Any]:
+        """Execute SQL query against a data cube (Pivot).
+
+        Args:
+            query_string: SQL query with special syntax:
+                - FROM "datacube"."CUBE_ID"
+                - DIM:dimension_name or DIMENSION_BY_ID('id')
+                - MEASURE_BY_ID('measure_id')
+            exact_results_only: If true, precise results for TopN/COUNT DISTINCT
+
+        Returns:
+            Query results with data array
+        """
+        payload = {
+            "queryString": query_string,
+            "exactResultsOnly": exact_results_only,
+        }
+        # Note: v0 API endpoint
+        response = await self.client.post(
+            f"/v0/projects/{self.project_id}/pivot/data-cube-sql/query",
+            json=payload,
+        )
         response.raise_for_status()
         return response.json()

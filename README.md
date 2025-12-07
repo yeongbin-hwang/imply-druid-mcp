@@ -20,6 +20,13 @@ A read-only MCP (Model Context Protocol) server for Imply Cloud/Druid databases.
 - **Table Operations**
   - List all tables in project
   - Get table schema details
+- **Dashboard Operations**
+  - List all dashboards
+  - Get dashboard details
+- **Data Cube Operations**
+  - List all data cubes
+  - Get data cube details
+  - Execute Pivot SQL queries
 
 ### Not Supported ❌
 
@@ -47,6 +54,21 @@ A read-only MCP (Model Context Protocol) server for Imply Cloud/Druid databases.
 | `list_tables` | List all tables (datasources) in the Druid project |
 | `get_table_schema` | Get detailed schema information for a specific table |
 
+### Dashboard Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_dashboards` | List all dashboards in the Imply project |
+| `get_dashboard` | Get detailed information about a specific dashboard |
+
+### Data Cube Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_data_cubes` | List all data cubes in the Imply project |
+| `get_data_cube` | Get detailed data cube information including dimensions and measures |
+| `query_data_cube` | Execute Pivot SQL query against a data cube |
+
 ## API Mapping
 
 This MCP server maps to the [Imply Polaris API](https://docs.imply.io/api/polaris/api-reference):
@@ -60,6 +82,11 @@ This MCP server maps to the [Imply Polaris API](https://docs.imply.io/api/polari
 | `cancel_query` | `DELETE /v1/projects/{projectId}/query/sql/statements/{queryId}` |
 | `list_tables` | `GET /v1/projects/{projectId}/tables` |
 | `get_table_schema` | `GET /v1/projects/{projectId}/tables/{tableName}` |
+| `list_dashboards` | `GET /v1/projects/{projectId}/dashboards` |
+| `get_dashboard` | `GET /v1/projects/{projectId}/dashboards/{dashboardId}` |
+| `list_data_cubes` | `GET /v1/projects/{projectId}/data-cubes` |
+| `get_data_cube` | `GET /v1/projects/{projectId}/data-cubes/{cubeName}` |
+| `query_data_cube` | `POST /v0/projects/{projectId}/pivot/data-cube-sql/query` |
 
 ## Installation
 
@@ -140,6 +167,24 @@ User: Query the top 10 records from wikipedia table
 
 Claude: [Uses execute_sql_query with "SELECT * FROM wikipedia LIMIT 10"]
 [Results displayed]
+```
+
+```
+User: Show me all data cubes
+
+Claude: [Uses list_data_cubes]
+- sales_cube: Sales Analytics (source: sales_table)
+- events_cube: Events Tracking (source: events)
+```
+
+```
+User: Query the sales data cube for top cities
+
+Claude: [Uses query_data_cube with Pivot SQL syntax]
+SELECT "DIM:city" AS "City", MEASURE_BY_ID('total_sales') AS "Sales"
+FROM "datacube"."sales_cube"
+ORDER BY 2 DESC
+LIMIT 10
 ```
 
 ## Development

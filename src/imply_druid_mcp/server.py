@@ -8,8 +8,10 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from .config import get_config
-from .tools.query_tools import get_query_tools, handle_query_tool
-from .tools.table_tools import get_table_tools, handle_table_tool
+from .tools.query_tools import get_query_tools, handle_query_tool, QUERY_TOOL_NAMES
+from .tools.table_tools import get_table_tools, handle_table_tool, TABLE_TOOL_NAMES
+from .tools.dashboard_tools import get_dashboard_tools, handle_dashboard_tool, DASHBOARD_TOOL_NAMES
+from .tools.datacube_tools import get_datacube_tools, handle_datacube_tool, DATACUBE_TOOL_NAMES
 
 # Configure logging
 logging.basicConfig(
@@ -28,7 +30,9 @@ def create_server() -> Server:
     # Load configuration
     try:
         config = get_config()
-        logger.info(f"Loaded configuration for project: {config.project_id}")
+        # Mask project_id for security (show only first 4 chars)
+        masked_project_id = config.project_id[:4] + "****" if len(config.project_id) > 4 else "****"
+        logger.info(f"Loaded configuration for project: {masked_project_id}")
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")
         raise
@@ -40,6 +44,8 @@ def create_server() -> Server:
     all_tools = []
     all_tools.extend(get_query_tools())
     all_tools.extend(get_table_tools())
+    all_tools.extend(get_dashboard_tools())
+    all_tools.extend(get_datacube_tools())
 
     logger.info(f"Registered {len(all_tools)} tools")
 
@@ -56,18 +62,20 @@ def create_server() -> Server:
         logger.info(f"Calling tool: {name}")
 
         # Query tools
-        if name in [
-            "execute_sql_query",
-            "execute_async_query",
-            "get_query_results",
-            "get_query_status",
-            "cancel_query",
-        ]:
+        if name in QUERY_TOOL_NAMES:
             return await handle_query_tool(name, arguments)
 
         # Table tools
-        elif name in ["list_tables", "get_table_schema"]:
+        elif name in TABLE_TOOL_NAMES:
             return await handle_table_tool(name, arguments)
+
+        # Dashboard tools
+        elif name in DASHBOARD_TOOL_NAMES:
+            return await handle_dashboard_tool(name, arguments)
+
+        # Data cube tools
+        elif name in DATACUBE_TOOL_NAMES:
+            return await handle_datacube_tool(name, arguments)
 
         else:
             logger.error(f"Unknown tool requested: {name}")
@@ -96,7 +104,8 @@ async def main() -> None:
     except KeyboardInterrupt:
         logger.info("Server shutdown requested")
     except Exception as e:
-        logger.error(f"Server error: {e}", exc_info=True)
+        # Log error type only, full stack trace may contain sensitive info
+        logger.error(f"Server error: {type(e).__name__}")
         raise
     finally:
         logger.info("Server stopped")

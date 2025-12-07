@@ -1,5 +1,6 @@
 """Table read-only tools for MCP."""
 
+import logging
 from typing import Any
 
 import httpx
@@ -8,6 +9,11 @@ from mcp.types import Tool, TextContent
 from ..client import ImplyClient
 from ..config import get_config
 from ..utils import format_http_error, format_json
+
+logger = logging.getLogger("imply-druid-mcp")
+
+# Tool names for this module
+TABLE_TOOL_NAMES = ["list_tables", "get_table_schema"]
 
 
 def get_table_tools() -> list[Tool]:
@@ -98,5 +104,13 @@ async def handle_table_tool(name: str, arguments: Any) -> list[TextContent]:
     except httpx.HTTPStatusError as e:
         error_msg = format_http_error(e)
         return [TextContent(type="text", text=f"Error: {error_msg}")]
-    except Exception as e:
+    except ValueError as e:
         return [TextContent(type="text", text=f"Error: {str(e)}")]
+    except Exception as e:
+        logger.error(f"Table tool error: {e}", exc_info=True)
+        return [
+            TextContent(
+                type="text",
+                text="Error: An unexpected error occurred while processing the request.",
+            )
+        ]
